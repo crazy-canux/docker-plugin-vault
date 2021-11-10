@@ -1,0 +1,58 @@
+{
+	"description": "Vault secret plugin",
+	"documentation": "https://eu-gerrit-1.euhpc.arm.com/plugins/gitiles/CE-Media-MES/Team-Phoenix/docker-plugin-vault/+/refs/heads/master/README.md",
+	"entrypoint": [
+		"/go/bin/docker-plugin-vault"
+	],
+	"env": [
+		{
+			"name": "VAULT_TOKEN",
+			"description": "token of vault.",
+			"value": null,
+			"settable": ["value"]
+		},
+		{
+			"name": "VAULT_SKIP_VERIFY",
+			"description": "skip CA verify.",
+			"value": "true",
+			"settable": ["value"]
+		},
+		 
+		{
+			"name": "policy-template",
+			"description": "Template defining which policies to attach to token",
+			"value": "{{ .ServiceName }}",
+			"settable": ["value"]
+		},
+		{
+			"name": "VAULT_ADDR",
+			"description": "Vault server address",
+			"value": "https://eu-west-1.vault.aws.arm.com/",
+			"settable": ["value"]
+		},
+		{
+			"name": "DOCKER_API_VERSION",
+			"description": "Docker API version",
+			"value": "1.40",
+			"settable": ["value"]
+		}
+	],
+	"mounts": [
+		{
+			"destination": "/var/run/docker.sock",
+			"source": "/var/run/docker.sock",
+			"options": ["rbind"],
+			"type": "bind"
+		}
+	],
+	"network": {
+		"type": "host"
+	},
+	"interface": {
+		"types":["docker.secretprovider/1.0"],
+		"socket":"vault.sock"
+	},
+	"linux": {
+		"capabilities": ["CAP_SYS_ADMIN"]
+	}
+}

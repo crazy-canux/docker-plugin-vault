@@ -36,6 +36,7 @@ const (
 	versionLabel = "docker.plugin.secretprovider.vault.version"
 	// Return JSON encoded map of secret if set to "true"
 	formatLabel = "docker.plugin.secretprovider.vault.format"
+
 	// socket address
 	socketAddress = "/run/docker/plugins/vault.sock"
 )
@@ -115,7 +116,6 @@ func (d vaultSecretsDriver) Get(req secrets.Request) secrets.Response {
 
 	// Tips: as we use global token, so no need to create policy and token for each services.
 	serviceVaultClient := d.vaultClient
-	log.Infof("service token: %s", serviceVaultClient.Token())
 
 	// Inspect the secret to read its labels
 	var vaultWrapValue bool
@@ -313,7 +313,6 @@ func main() {
 
 	// Create a Vault client
 	vaultToken := os.Getenv("VAULT_TOKEN")
-	log.Infof("token: %s", vaultToken)
 	var vaultClient *vaultapi.Client
 	vaultConfig := vaultapi.DefaultConfig()
 	if c, err := vaultapi.NewClient(vaultConfig); err != nil {

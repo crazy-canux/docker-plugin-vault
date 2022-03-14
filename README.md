@@ -10,16 +10,17 @@ docker secret plugin for vault provider.
     make create
     make push
 
-
 ## how to install plugin
  
- install and setup token, enabled by default:
+install and setup token, enabled by default:
 
     docker plugin install --grant-all-permissions kaizen--dev.artifactory.geo.arm.com/docker-plugin-vault:1.0.0 VAULT_TOKEN=your-token
 
 setup token if renew:
 
+    docker plugin disable kaizen--dev.artifactory.geo.arm.com/docker-plugin-vault:1.0.0
     docker plugin set kaizen--dev.artifactory.geo.arm.com/docker-plugin-vault:1.0.0 VAULT_TOKEN=your-token
+    docker plugin enable kaizen--dev.artifactory.geo.arm.com/docker-plugin-vault:1.0.0
 
 ## design
 

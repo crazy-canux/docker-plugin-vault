@@ -29,8 +29,22 @@ setup token if renew:
 1. 通过一个service来传递token给plugin，这样token是安全的。但是要额外创建一个service，并且创建一个token的secret。
 2. plugin自己创建token，并给每个secret创建对应的policy。
 
-目前实现：
+1.0.0实现：
 
 1. 通过环境变量传递token，docker plugin inspect能看到token,不安全。
 2. 只能通过field,path,version在docker stack deploy的时候创建token。
 3. 不需要创建token和policy。
+
+1.1.0实现：
+
+1. 给vault token创建一个secret
+2. 通过secret获取token
+
+## how to debug plugin
+
+查看log
+
+    cd /run/docker/plugins/$your_plugin_id
+    cat < init-stdout
+    cat < init-stderr
+

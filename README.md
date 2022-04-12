@@ -42,8 +42,14 @@ setup token if renew:
 
 ## how to debug plugin
 
+docker以debug模式启动
+
+    "debug": true
+    
 查看log
 
+    journalctl -f -u docker.service
+    
     cd /run/docker/plugins/$your_plugin_id
     cat < init-stdout
     cat < init-stderr

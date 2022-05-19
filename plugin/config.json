@@ -1,6 +1,6 @@
 {
 	"description": "Vault secret plugin",
-	"documentation": "https://eu-gerrit-1.euhpc.arm.com/plugins/gitiles/CE-Media-MES/Team-Phoenix/docker-plugin-vault/+/refs/heads/master/README.md",
+	"documentation": "https://github.com/crazy-canux/docker-plugin-vault/blob/main/README.md",
 	"entrypoint": [
 		"/go/bin/docker-plugin-vault"
 	],
@@ -27,7 +27,7 @@
 		{
 			"name": "VAULT_ADDR",
 			"description": "Vault server address",
-			"value": "https://eu-west-1.vault.aws.arm.com/",
+			"value": "https://eu-west-1.vault.aws.canux.com/",
 			"settable": ["value"]
 		},
 		{

@@ -14,13 +14,13 @@ docker secret plugin for vault provider.
  
 install and setup token, enabled by default:
 
-    docker plugin install --grant-all-permissions kaizen--dev.artifactory.geo.arm.com/docker-plugin-vault:1.0.0 VAULT_TOKEN=your-token
+    docker plugin install --grant-all-permissions canux--dev.eu-west-1.artifactory.canux.com/docker-plugin-vault:1.0.0 VAULT_TOKEN=your-token
 
 setup token if renew:
 
-    docker plugin disable kaizen--dev.artifactory.geo.arm.com/docker-plugin-vault:1.0.0
-    docker plugin set kaizen--dev.artifactory.geo.arm.com/docker-plugin-vault:1.0.0 VAULT_TOKEN=your-token
-    docker plugin enable kaizen--dev.artifactory.geo.arm.com/docker-plugin-vault:1.0.0
+    docker plugin disable canux--dev.eu-west-1.artifactory.canux.com/docker-plugin-vault:1.0.0
+    docker plugin set canux--dev.eu-west-1.artifactory.canux.com/docker-plugin-vault:1.0.0 VAULT_TOKEN=your-token
+    docker plugin enable canux--dev.eu-west-1.artifactory.canux.com/docker-plugin-vault:1.0.0
 
 ## design
 
@@ -53,4 +53,15 @@ docker以debug模式启动
     cd /run/docker/plugins/$your_plugin_id
     cat < init-stdout
     cat < init-stderr
+    
+## how to use 
+
+use it in compose file
+
+    secrets:
+      kaizen_haproxy_ca:
+        driver: canux--dev.eu-west-1.artifactory.canux.com/docker-plugin-vault:0.0.1
+        labels:
+          docker.plugin.secretprovider.vault.path: kaizen/certs/data/certs
+          docker.plugin.secretprovider.vault.field: "*.kaizen.gpu.arm.com"
 

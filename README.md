@@ -62,6 +62,6 @@ use it in compose file
       kaizen_haproxy_ca:
         driver: canux--dev.eu-west-1.artifactory.canux.com/docker-plugin-vault:0.0.1
         labels:
-          docker.plugin.secretprovider.vault.path: kaizen/certs/data/certs
-          docker.plugin.secretprovider.vault.field: "*.kaizen.gpu.arm.com"
+          docker.plugin.secretprovider.vault.path: canux/data/pki
+          docker.plugin.secretprovider.vault.field: "*.canuxcheng.com"
 

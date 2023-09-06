@@ -1,28 +1,7 @@
 # yaml variable
-x-env: &default-env
-    ADMIN_EMAIL: ${ADMIN_EMAIL}
-    KAIZEN_SERVICE_USER: ${LDAP_USER}
-    KAIZEN_SERVICE_PASSWORD: ${LDAP_PASSWORD}
-    SSH_KEY: ${SSH_KEY}
-    DJANGO_SERVER_TYPE: ${DJANGO_SERVER_TYPE}
-    DJANGO_TMS_SCHEME: ${SERVER_SCHEME}
-    DJANGO_TMS_PORT: ${SERVER_PORT}
-    DJANGO_TMS_HOST: ${SERVER_HOST}
-    USER_FACING_ROOT_URL: ${USER_FACING_ROOT_URL}
-    AMQP_URL: amqp://${LDAP_USER}:${LDAP_PASSWORD}@amqp:5672
-    AMQP_API_URL: http://${LDAP_USER}:${LDAP_PASSWORD}@amqp:15672/api/
-    HASTEBIN_URL: ${HASTEBIN_URL}
-    TI2_URL: ${TI2_URL}
-    INFLUXDB_SERVERS: ${INFLUXDB_SERVERS}
-    EU_GERRIT_URL: ${GERRIT_SERVER}
-    MAILHOST: ${SMTP_SERVER}
-    ISSUES_JIRA_URL: ${JIRA_SERVER}
-    LDAP_AUTH_URL: ${LDAP_SERVER}
-    TZ: UTC
-
 x-labels: &default-labels
     labels:
-        - "com.service.alt_name=kaizen"
+        - "com.service.alt_name=canux"
 
 x-restart: &default-restart
     restart_policy:
@@ -34,27 +13,16 @@ x-restart: &default-restart
 x-placement: &default-placement
     placement:
         constraints:
-            - "node.labels.shanghai==kaizen"
+            - "node.labels.shanghai==canux"
 
 x-secrets: &default-secrets
     secrets:
-        - source: kaizen_mysql_rw
-          target: kaizen_db
-        - source: ti2_mysql_rw
-          target: ti2_db
-        - source: ti2_mysql_archive_ro
-          target: ti2_archive_db
+        - source: mysql_rw
+          target: db
 
-x-percona-toolkit: &percona-toolkit kaizen--pro.artifactory.geo.arm.com/percona-toolkit:1.0.0
-x-hastebin-service-image: &hastebin_service kaizen--pro.artifactory.geo.arm.com/hastebin_service:1.0.0
-x-haproxy-image: &haproxy kaizen--pro.artifactory.geo.arm.com/haproxy:1.1.2
-x-nginx-image: &nginx kaizen--pro.artifactory.geo.arm.com/nginx:1.0.8
-x-email-watchers-image: &email_watchers kaizen--pro.artifactory.geo.arm.com/email_watchers:1.0.1
-x-board-service-image: &board_service kaizen--pro.artifactory.geo.arm.com/board_service:1.1.6
-x-webui-image: &webui kaizen--pro.artifactory.geo.arm.com/webui:1.0.5
-x-kaizen-image: &kaizen kaizen--pro.artifactory.geo.arm.com/submission:1.0.8
-x-rabbitmq-image: &rabbitmq kaizen--pro.artifactory.geo.arm.com/rabbitmq:3.9.5-prometheus
-x-vault-plugin: &driver kaizen--dev.artifactory.geo.arm.com/docker-plugin-vault:0.0.1
+x-fe-image: &fe pro.artifactory.geo.arm.com/fe:1.0.5
+x-be-image: &be pro.artifactory.geo.arm.com/be:1.0.8
+x-vault-plugin: &driver dev.artifactory.geo.arm.com/docker-plugin-vault:0.0.1
 
 
 
@@ -62,252 +30,9 @@ x-vault-plugin: &driver kaizen--dev.artifactory.geo.arm.com/docker-plugin-vault:
 version: '3.8'
 
 services:
-    hastebin:
-        <<: *default-labels
-        image: *hastebin_service
-        deploy:
-            <<: *default-placement
-            restart_policy:
-                condition: any
-                delay: 3s
-            resources:
-                reservations:
-                    cpus: '0.1'
-                    memory: 100M
-                limits:
-                    cpus: '1.0'
-                    memory: 4G
-        volumes:
-            - /arm/mpdti/docker/volumes/hastebin-data:/var/lib/haste-server
-        ports:
-            - 7777:7777
-        networks:
-            - default
-        environment:
-            - TZ=UTC
-
-    cleaner:
-        <<: *default-labels
-        image: mirrors--dockerhub.artifactory.geo.arm.com/alpine:3.7
-        deploy:
-            restart_policy:
-                condition: any
-                delay: 3s
-            resources:
-                reservations:
-                    cpus: '0.1'
-                    memory: 100M
-                limits:
-                    cpus: '1.0'
-                    memory: 1G
-        volumes:
-            - /arm/mpdti/docker/volumes/hastebin-data:/var/lib/haste-server
-        command: sh -c "while true; do find /var/lib/haste-server -type f -mtime +7 -exec rm {} \\; ; sleep 1d; done"
-        networks:
-            - default
-        environment:
-            - TZ=UTC
-
-    amqp:
-        <<: *default-labels
-        image: *rabbitmq
-        deploy:
-            restart_policy:
-                condition: any
-                delay: 3s
-            resources:
-                reservations:
-                    cpus: '1.0'
-                    memory: 2G
-                limits:
-                    cpus: '8.0'
-                    memory: 16G
-        environment:
-            - RABBITMQ_DEFAULT_USER=${LDAP_USER}
-            - RABBITMQ_DEFAULT_PASS=${LDAP_PASSWORD}
-            - VM_MEMORY_HIGH_WATERMARK=0.9
-            - TZ=UTC
-        healthcheck:
-            test: "rabbitmqctl status || false"
-        networks:
-            - default
-
-    celery-metrics:
-        <<: *default-labels
-        # Prometheus metrics for celery
-        image: mirrors--dockerhub.artifactory.geo.arm.com/zerok/celery-prometheus-exporter:latest-celery3
-        deploy:
-            restart_policy:
-                condition: any
-                delay: 3s
-            resources:
-                reservations:
-                    cpus: '0.01'
-                    memory: 100M
-                limits:
-                    cpus: '1.0'
-                    memory: 1G
-        command: "--verbose"
-        depends_on:
-            - amqp
-        networks:
-            - default
-        environment:
-            - BROKER_URL=${AMQP_URL}
-            - TZ=UTC
-
-    db_query_killer:
-        <<: *default-labels
-        # Container to kill long-running MySQL Queries.
-        image: *percona-toolkit
-        deploy:
-            restart_policy:
-                condition: any
-                delay: 3s
-            resources:
-                reservations:
-                    cpus: '0.01'
-                    memory: 100M
-                limits:
-                    cpus: '1.0'
-                    memory: 1G
-        networks:
-            - default
-        environment:
-            - TZ=UTC
-        secrets:
-            - source: kaizen_mysql_rw
-              target: kaizen_mysql
-
-    haproxy-metrics:
-        <<: *default-labels
-        image: mirrors--quay-io.artifactory.geo.arm.com/prometheus/haproxy-exporter:v0.8.0
-        command:
-            - "--haproxy.scrape-uri=http://haproxy/haproxy?stats;csv"
-        deploy:
-            restart_policy:
-                condition: any
-                delay: 3s
-            resources:
-                reservations:
-                    cpus: '0.01'
-                    memory: 100M
-                limits:
-                    cpus: '1.0'
-                    memory: 1G
-        depends_on:
-            - haproxy
-        networks:
-            - default
-        environment:
-            - TZ=UTC
-
-    haproxy:
-        <<: *default-labels
-        # haproxy is the load-balancer for all HTTP requests.
-        image: *haproxy
-        deploy:
-            <<: *default-placement
-            restart_policy:
-                condition: any
-                delay: 3s
-            resources:
-                reservations:
-                    cpus: '0.1'
-                    memory: 100M
-                limits:
-                    cpus: '1.0'
-                    memory: 1G
-        healthcheck:
-            test: "true"
-        init: true
-        networks:
-            - default
-        environment:
-            - TZ=UTC
-        ports:
-            - 9999:443
-        secrets:
-            - source: kaizen_haproxy_ca
-              target: kaizen.pem
-
-    nginx:
-        <<: *default-labels
-        image: *nginx
-        deploy:
-            restart_policy:
-                condition: any
-                delay: 3s
-            resources:
-                reservations:
-                    cpus: '0.01'
-                    memory: 100M
-                limits:
-                    cpus: '1.0'
-                    memory: 1G
-        networks:
-            - default
-        environment:
-            - TZ=UTC
-
-    board_service:
-        <<: *default-labels
-        # Service for managing TI2 board
-        image: *board_service
-        command: >-
-            bash -c "
-            while ! curl -s amqp:15672 > /dev/null; do echo waiting on rabbitmq for 1 seconds; sleep 1; done
-            && nameko run --config /etc/nameko/nameko.yml board_service"
-        deploy:
-            restart_policy:
-                condition: any
-                delay: 3s
-            resources:
-                reservations:
-                    cpus: '0.01'
-                    memory: 100M
-                limits:
-                    cpus: '1.0'
-                    memory: 1G
-        depends_on:
-            - amqp
-        environment:
-            <<: *default-env
-            SCRIPT_REVISION: a8d7655bbf11e79386f85a06a191b041ab747146
-            TMS_PROJECT: ${BOARD_BOOKING_PROJECT}
-            NFS_URL: ${NFS_SERVER}
-        networks:
-            - default
-        healthcheck:
-            test: curl -f http://localhost:8000/board_service/book_script || exit 1
-            interval: 20s
-            timeout: 10s
-            retries: 3
-
-    email_watchers:
-        <<: *default-labels
-        image: *email_watchers
-        deploy:
-            restart_policy:
-                condition: any
-                delay: 3s
-            resources:
-                reservations:
-                    cpus: '0.01'
-                    memory: 100M
-                limits:
-                    cpus: '1.0'
-                    memory: 1G
-        depends_on:
-            - api
-        environment:
-            <<: *default-env
-        networks:
-            - default
-
     webui:
         <<: *default-labels
-        image: *webui
+        image: *fe
         deploy:
             <<: *default-restart
             resources:
@@ -319,107 +44,11 @@ services:
                     memory: 1G
         networks:
             - default
-        environment:
-            DJANGO_SERVER_TYPE: ${DJANGO_SERVER_TYPE}
-            TZ: UTC
-
-    celery:
-        <<: *default-labels
-        # Dedicated service for handling celery submission build jobs
-        image: *kaizen
-        stop_grace_period: 10m
-        command: >-
-            bash -c "
-            while ! curl -s amqp:15672 > /dev/null; do echo waiting on rabbitmq for 1 second; sleep 1; done
-            && celery -A site_main.celery worker -E -Q default --loglevel=INFO --concurrency=8 -Ofair -B"
-        deploy:
-            <<: *default-restart
-            mode: replicated
-            replicas: 1
-            resources:
-                reservations:
-                    cpus: '4.0'
-                    memory: 8G
-                limits:
-                    cpus: '8.0'
-                    memory: 16G
-        depends_on:
-            - amqp
-        environment:
-            <<: *default-env
-        networks:
-            - default
-        volumes:
-            - ${TSS_TMC_CACHE}:/home/user/midgard_sw_tmpl.git:ro
-        <<: *default-secrets
-        healthcheck:
-            test: celery inspect ping -A site_main.celery -d celery@$$HOSTNAME || exit 1
-            interval: 20s
-            timeout: 20s
-            retries: 5
-
-    celery_submit:
-        <<: *default-labels
-        # Dedicated service for handling celery submission jobs
-        image: *kaizen
-        stop_grace_period: 4h
-        command: >-
-            bash -c "
-            while ! curl -s amqp:15672 > /dev/null; do echo waiting on rabbitmq for 1 seconds; sleep 1; done
-            && celery -A site_main.celery worker -E -Q submit --loglevel=INFO --concurrency=8 -Ofair"
-        deploy:
-            <<: *default-restart
-            mode: replicated
-            replicas: 1
-            resources:
-                reservations:
-                    cpus: '0.01'
-                    memory: 8G
-                limits:
-                    cpus: '8.0'
-                    memory: 16G
-        depends_on:
-            - amqp
-        environment:
-            <<: *default-env
-        networks:
-            - default
-        <<: *default-secrets
-        healthcheck:
-            test: celery inspect ping -A site_main.celery -d celery@$$HOSTNAME || exit 1
-            interval: 20s
-            timeout: 20s
-            retries: 5
-
-    flower:
-        <<: *default-labels
-        # Service for monitoring celery jobs
-        image: *kaizen
-        command: >-
-            bash -c "
-            while ! curl -s amqp:15672 > /dev/null; do echo waiting on rabbitmq for 1 seconds; sleep 1; done
-            && celery -A site_main.celery flower --conf=site_main/flowerconfig.py --url_prefix=flower"
-        deploy:
-            <<: *default-restart
-            resources:
-                reservations:
-                    cpus: '0.01'
-                    memory: 8G
-                limits:
-                    cpus: '1.0'
-                    memory: 16G
-        depends_on:
-            - amqp
-        environment:
-            <<: *default-env
-        networks:
-            - default
-        <<: *default-secrets
 
     api:
         <<: *default-labels
         # Dedicated web service for handling /api/v0/
-        image: *kaizen
+        image: *be
         # if updating this timeout also update the timeout in nginx/nginx.conf
         deploy:
             <<: *default-restart
@@ -447,12 +76,8 @@ services:
             - "--limit-request-field_size=0"
             - "--bind=0.0.0.0:8000"
             - "site_main.wsgi:application"
-        depends_on:
-           - amqp
         environment:
             <<: *default-env
-        volumes:
-            - ${TSS_TMC_CACHE}:/home/user/midgard_sw_tmpl.git:ro
         networks:
             - default
         <<: *default-secrets
@@ -465,7 +90,7 @@ services:
     web:
         <<: *default-labels
         # Web service for handling all web requests without dedicated containers
-        image: *kaizen
+        image: *fe
         deploy:
             <<: *default-restart
             mode: replicated
@@ -492,12 +117,8 @@ services:
             - "--limit-request-field_size=0"
             - "--bind=0.0.0.0:8000"
             - "site_main.wsgi:application"
-        depends_on:
-            - amqp
         environment:
             <<: *default-env
-        volumes:
-            - ${TSS_TMC_CACHE}:/home/user/midgard_sw_tmpl.git:ro
         networks:
             - default
         <<: *default-secrets
@@ -507,54 +128,15 @@ services:
             timeout: 10s
             retries: 3
 
-    admin:
-        <<: *default-labels
-        image: *kaizen
-        command: tail -f /dev/null
-        deploy:
-            <<: *default-placement
-            <<: *default-restart
-            resources:
-                reservations:
-                    cpus: '0.01'
-                    memory: 100M
-                limits:
-                    cpus: '1.0'
-                    memory: 1G
-        environment:
-            <<: *default-env
-        volumes:
-            - ${TSS_TMC_CACHE}:/home/user/midgard_sw_tmpl.git:ro
-            - /arm/mysqldump/dbbackup:/home/user/dbbackup
-        networks:
-            - default
-        <<: *default-secrets
-
-
-
 networks:
     default:
         driver: overlay
         attachable: true
 
 secrets:
-  kaizen_haproxy_ca:
+  mysql_rw:
     driver: *driver
     labels:
-      docker.plugin.secretprovider.vault.path: kaizen/certs/data/certs
-      docker.plugin.secretprovider.vault.field: "*.kaizen.gpu.arm.com"
-  kaizen_mysql_rw:
-    driver: *driver
-    labels:
-      docker.plugin.secretprovider.vault.path: kaizen/db/data/db
+      docker.plugin.secretprovider.vault.path: canux/db/data/db
       docker.plugin.secretprovider.vault.field: rw
-  ti2_mysql_rw:    
-    driver: *driver
-    labels:
-      docker.plugin.secretprovider.vault.path: kaizen/db/data/ti2
-      docker.plugin.secretprovider.vault.field: rw
-  ti2_mysql_archive_ro:    
-    driver: *driver
-    labels:
-      docker.plugin.secretprovider.vault.path: kaizen/db/data/ti2_archive
-      docker.plugin.secretprovider.vault.field: ro
+

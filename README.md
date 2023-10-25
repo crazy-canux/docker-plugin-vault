@@ -14,13 +14,13 @@ docker secret plugin for vault provider.
  
 install and setup token, enabled by default:
 
-    docker plugin install --grant-all-permissions canux--dev.eu-west-1.artifactory.canux.com/docker-plugin-vault:1.0.0 VAULT_TOKEN=your-token
+    docker plugin install --grant-all-permissions canux--dev.harbor.com/docker-plugin-vault:1.0.0 VAULT_TOKEN=your-token
 
 setup token if renew:
 
-    docker plugin disable canux--dev.eu-west-1.artifactory.canux.com/docker-plugin-vault:1.0.0
-    docker plugin set canux--dev.eu-west-1.artifactory.canux.com/docker-plugin-vault:1.0.0 VAULT_TOKEN=your-token
-    docker plugin enable canux--dev.eu-west-1.artifactory.canux.com/docker-plugin-vault:1.0.0
+    docker plugin disable canux--dev.harbor.com/docker-plugin-vault:1.0.0
+    docker plugin set canux--dev.harbor.com/docker-plugin-vault:1.0.0 VAULT_TOKEN=your-token
+    docker plugin enable canux--dev.harbor.com/docker-plugin-vault:1.0.0
 
 ## design
 
@@ -59,8 +59,8 @@ docker以debug模式启动
 use it in compose file
 
     secrets:
-      kaizen_haproxy_ca:
-        driver: canux--dev.eu-west-1.artifactory.canux.com/docker-plugin-vault:0.0.1
+      haproxy:
+        driver: canux--dev.harbor.com/docker-plugin-vault:0.0.1
         labels:
           docker.plugin.secretprovider.vault.path: canux/data/pki
           docker.plugin.secretprovider.vault.field: "*.canuxcheng.com"

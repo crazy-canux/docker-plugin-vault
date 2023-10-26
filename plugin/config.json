@@ -27,7 +27,7 @@
 		{
 			"name": "VAULT_ADDR",
 			"description": "Vault server address",
-			"value": "https://eu-west-1.vault.aws.canux.com/",
+			"value": "https://vault.canux.com/",
 			"settable": ["value"]
 		},
 		{
